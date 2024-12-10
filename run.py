@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 import threading
 from PIL import Image
 import tkinter as tk
@@ -15,6 +16,9 @@ class ImageStamperGUI:
         # Determine the script's directory
         self.script_dir = self.get_script_directory()
 
+        # Path to settings.json
+        self.settings_path = os.path.join(self.script_dir, "settings.json")
+
         # Initialize variables
         self.input_dir = tk.StringVar()
         self.output_dir = tk.StringVar()
@@ -25,6 +29,9 @@ class ImageStamperGUI:
 
         # Create GUI components
         self.create_widgets()
+
+        # Load settings if available
+        self.load_settings()
 
     def get_script_directory(self):
         """
@@ -66,13 +73,13 @@ class ImageStamperGUI:
 
         # ===== Logo Size Ratio =====
         tk.Label(self.master, text="Logo Size Ratio:", font=('Helvetica', 10, 'bold')).grid(row=4, column=0, sticky="e", **padding_options)
-        size_scale = tk.Scale(self.master, variable=self.logo_size_ratio, from_=0.05, to=0.5, resolution=0.01, orient=tk.HORIZONTAL, length=300)
+        size_scale = tk.Scale(self.master, variable=self.logo_size_ratio, from_=0.05, to=0.5, resolution=0.01, orient=tk.HORIZONTAL, length=300, command=self.save_settings)
         size_scale.grid(row=4, column=1, sticky="w", **padding_options)
         tk.Label(self.master, text="Relative to Image Size").grid(row=4, column=1, sticky="e", padx=(310, 10), pady=5)
 
         # ===== Logo Opacity =====
         tk.Label(self.master, text="Logo Opacity:", font=('Helvetica', 10, 'bold')).grid(row=5, column=0, sticky="e", **padding_options)
-        opacity_scale = tk.Scale(self.master, variable=self.opacity, from_=0, to=255, orient=tk.HORIZONTAL, length=300)
+        opacity_scale = tk.Scale(self.master, variable=self.opacity, from_=0, to=255, orient=tk.HORIZONTAL, length=300, command=self.save_settings)
         opacity_scale.grid(row=5, column=1, sticky="w", **padding_options)
         tk.Label(self.master, text="0 (Transparent) to 255 (Opaque)").grid(row=5, column=1, sticky="e", padx=(310, 10), pady=5)
 
@@ -88,6 +95,12 @@ class ImageStamperGUI:
         scrollbar = tk.Scrollbar(self.master, command=self.log_text.yview)
         scrollbar.grid(row=7, column=3, sticky='nsew', pady=5)
         self.log_text['yscrollcommand'] = scrollbar.set
+
+        # ===== Bind Events to Save Settings =====
+        self.input_dir.trace_add('write', lambda *args: self.save_settings())
+        self.output_dir.trace_add('write', lambda *args: self.save_settings())
+        self.logo_path.trace_add('write', lambda *args: self.save_settings())
+        self.position.trace_add('write', lambda *args: self.save_settings())
 
     def browse_input_dir(self):
         directory = filedialog.askdirectory(title="Select Input Directory", initialdir=self.script_dir)
@@ -147,6 +160,48 @@ class ImageStamperGUI:
         self.log_text.config(state='normal')
         self.log_text.delete(1.0, tk.END)
         self.log_text.config(state='disabled')
+
+    def load_settings(self):
+        """
+        Loads settings from settings.json and updates the GUI fields.
+        """
+        if os.path.exists(self.settings_path):
+            try:
+                with open(self.settings_path, 'r') as f:
+                    settings = json.load(f)
+                
+                self.input_dir.set(settings.get('input_dir', ''))
+                self.output_dir.set(settings.get('output_dir', ''))
+                self.logo_path.set(settings.get('logo_path', ''))
+                self.position.set(settings.get('position', 'bottom-right'))
+                self.logo_size_ratio.set(settings.get('logo_size_ratio', 0.1))
+                self.opacity.set(settings.get('opacity', 128))
+
+                self.log(f"Loaded settings from {self.settings_path}")
+            except Exception as e:
+                self.log(f"Error loading settings: {e}")
+        else:
+            self.log("No existing settings found. Using default values.")
+
+    def save_settings(self, *args):
+        """
+        Saves the current settings to settings.json.
+        """
+        settings = {
+            'input_dir': self.input_dir.get(),
+            'output_dir': self.output_dir.get(),
+            'logo_path': self.logo_path.get(),
+            'position': self.position.get(),
+            'logo_size_ratio': self.logo_size_ratio.get(),
+            'opacity': self.opacity.get()
+        }
+
+        try:
+            with open(self.settings_path, 'w') as f:
+                json.dump(settings, f, indent=4)
+            self.log(f"Settings saved to {self.settings_path}")
+        except Exception as e:
+            self.log(f"Error saving settings: {e}")
 
     def process_images(self):
         input_dir = self.input_dir.get()
