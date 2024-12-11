@@ -396,7 +396,7 @@ class ImageStamperGUI:
                 output_path = os.path.join(output_dir, output_filename)
 
                 # Save the image as JPEG
-                composite.save(output_path, format='JPEG', quality=95)  # Adjust quality as needed
+                composite.save(output_path, format='JPEG', quality=100)  # Adjust quality as needed
 
                 # Update progress bar
                 self.master.after(0, lambda: self.progress.step(1))
