@@ -1,5 +1,8 @@
 name: Build and Release Image Stamper
 
+permissions:
+  contents: write
+
 # Trigger the workflow on push events to the main branch
 on:
   push:
