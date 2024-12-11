@@ -32,7 +32,7 @@ jobs:
         id: pyinstaller
         uses: Martin005/pyinstaller-action@v1.2.0
         with:
-          spec: 'image_stamper_gui.py' # Path to your main script or .spec file
+          spec: 'main.py' # Path to your main script or .spec file
           requirements: 'requirements.txt' # Path to your requirements.txt
           options: '--onefile,--name "ImageStamper",--windowed' # PyInstaller options
           python_ver: '3.10'
