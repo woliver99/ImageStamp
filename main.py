@@ -28,7 +28,7 @@ class ImageStamperGUI:
         self.output_dir = tk.StringVar()
         self.logo_path = tk.StringVar()
         self.position = tk.StringVar(value="bottom-right")
-        self.logo_size_ratio = tk.DoubleVar(value=0.1)
+        self.logo_size_ratio = tk.DoubleVar(value=0.15)
         self.opacity = tk.IntVar(value=128)
 
         # Initialize queue for thread-safe logging
