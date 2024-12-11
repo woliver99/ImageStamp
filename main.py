@@ -36,7 +36,7 @@ class ImageStamperGUI:
 
         # Initialize ThreadPoolExecutor
         self.executor = None
-        self.max_workers = 4  # Adjust based on your CPU cores
+        self.max_workers = 8  # Adjust based on your CPU cores
 
         # Flag to control processing
         self.processing = False
@@ -158,20 +158,20 @@ class ImageStamperGUI:
         self.loading_settings = False  # <--- Set flag to False after bindings
 
     def browse_input_dir(self):
-        directory = filedialog.askdirectory(title="Select Input Directory", initialdir=self.script_dir)
+        directory = filedialog.askdirectory(title="Select Input Directory")
         if directory:
             self.input_dir.set(directory)
             self.log(f"Selected Input Directory: {directory}")
 
     def browse_output_dir(self):
-        directory = filedialog.askdirectory(title="Select Output Directory", initialdir=self.script_dir)
+        directory = filedialog.askdirectory(title="Select Output Directory")
         if directory:
             self.output_dir.set(directory)
             self.log(f"Selected Output Directory: {directory}")
 
     def browse_logo(self):
         filetypes = [("Image Files", "*.png;*.jpg;*.jpeg;*.bmp;*.gif"), ("All Files", "*.*")]
-        file = filedialog.askopenfilename(title="Select Logo Image", filetypes=filetypes, initialdir=self.script_dir)
+        file = filedialog.askopenfilename(title="Select Logo Image", filetypes=filetypes)
         if file:
             self.logo_path.set(file)
             self.log(f"Selected Logo File: {file}")
