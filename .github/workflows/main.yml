@@ -47,6 +47,10 @@ jobs:
           TAG_NAME="build-${GITHUB_SHA::7}"
           echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
 
+      - name: List dist Directory Contents
+        run: |
+          dir ./dist
+
       # Step 6: Create GitHub Release
       - name: Create Release
         id: create_release
