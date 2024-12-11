@@ -3,6 +3,7 @@ import sys
 import json
 import threading
 import queue
+import appdirs
 from PIL import Image
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
@@ -15,11 +16,12 @@ class ImageStamperGUI:
         master.geometry("800x600")
         master.resizable(False, False)
 
-        # Determine the script's directory
-        self.script_dir = self.get_script_directory()
+        # Determine the settings directory using appdirs
+        self.settings_dir = appdirs.user_config_dir("ImageStamper", "maplenetwork")
+        os.makedirs(self.settings_dir, exist_ok=True)
 
         # Path to settings.json
-        self.settings_path = os.path.join(self.script_dir, "settings.json")
+        self.settings_path = os.path.join(self.settings_dir, "settings.json")
 
         # Initialize variables
         self.input_dir = tk.StringVar()
@@ -34,7 +36,7 @@ class ImageStamperGUI:
 
         # Initialize ThreadPoolExecutor
         self.executor = None
-        self.max_workers = 8  # Adjust based on your CPU cores
+        self.max_workers = 4  # Adjust based on your CPU cores
 
         # Flag to control processing
         self.processing = False

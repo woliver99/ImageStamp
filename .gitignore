@@ -164,4 +164,3 @@ cython_debug/
 input/
 output/
 logo.png
-settings.json
