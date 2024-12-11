@@ -41,6 +41,7 @@ jobs:
       # Step 5: Create Git Tag
       - name: Create Git Tag
         id: create_tag
+        shell: bash
         run: |
           # Generate a tag name using the short commit SHA
           TAG_NAME="build-${GITHUB_SHA::7}"
