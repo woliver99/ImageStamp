@@ -30,7 +30,7 @@ jobs:
       # Step 4: Build Executable with PyInstaller Action
       - name: Build Executable
         id: pyinstaller
-        uses: sayyid5416/pyinstaller-action@v1.2.0
+        uses: Martin005/pyinstaller-action@v1.2.0
         with:
           spec: 'image_stamper_gui.py' # Path to your main script or .spec file
           requirements: 'requirements.txt' # Path to your requirements.txt
