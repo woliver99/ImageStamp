@@ -170,11 +170,15 @@ class ImageStamperGUI:
             self.log(f"Selected Output Directory: {directory}")
 
     def browse_logo(self):
-        filetypes = [("Image Files", "*.png;*.jpg;*.jpeg;*.bmp;*.gif"), ("All Files", "*.*")]
+        filetypes = [
+            ("Image Files", ("*.png", "*.jpg", "*.jpeg", "*.bmp", "*.gif")),
+            ("All Files", "*.*")
+        ]
         file = filedialog.askopenfilename(title="Select Logo Image", filetypes=filetypes)
         if file:
             self.logo_path.set(file)
             self.log(f"Selected Logo File: {file}")
+
 
     def start_processing(self):
         if self.processing:
