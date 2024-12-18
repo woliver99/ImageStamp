@@ -52,30 +52,33 @@ jobs:
   build-macos:
     name: Build macOS Executable (Universal)
     runs-on: macos-latest
-
+  
     steps:
       # Step 1: Checkout the repository
       - name: Checkout Repository
         uses: actions/checkout@v3
-
+  
       # Step 2: Set up Python 3.12.8 with universal2 architecture
       - name: Set up Python 3.12.8 (universal2)
         uses: actions/setup-python@v4
         with:
           python-version: '3.12.8'
-
+          architecture: 'universal2'  # Ensures a universal build of Python
+  
       # Step 3: Install Homebrew
       - name: Install Homebrew
         run: |
           /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-          echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $GITHUB_PROFILE
-          eval "$(/opt/homebrew/bin/brew shellenv)"
-
+          # Append Homebrew's bin directory to the PATH for subsequent steps
+          echo "/opt/homebrew/bin" >> $GITHUB_PATH
+        shell: bash
+  
       # Step 4: Install Build Tools
       - name: Install Build Tools
         run: |
           brew install cmake pkg-config
-
+        shell: bash
+  
       # Step 5: Build libjpeg-turbo as universal2
       - name: Build libjpeg-turbo as universal2
         run: |
@@ -85,18 +88,21 @@ jobs:
           cmake .. -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" -DENABLE_SHARED=ON -DCMAKE_INSTALL_PREFIX=/usr/local
           make -j$(sysctl -n hw.ncpu)
           make install
-
+        shell: bash
+  
       # Step 6: Verify libjpeg installation
       - name: Verify libjpeg installation
         run: |
           lipo -info /usr/local/lib/libjpeg.dylib
-
+        shell: bash
+  
       # Step 7: Set Environment Variables for Pillow
       - name: Set Environment Variables for Pillow
         run: |
           echo "CPPFLAGS=-I/usr/local/include" >> $GITHUB_ENV
           echo "LDFLAGS=-L/usr/local/lib" >> $GITHUB_ENV
-
+        shell: bash
+  
       # Step 8: Cache pip dependencies
       - name: Cache pip
         uses: actions/cache@v3
@@ -105,7 +111,7 @@ jobs:
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
-
+  
       # Step 9: Install dependencies
       - name: Install Dependencies
         run: |
@@ -115,12 +121,14 @@ jobs:
           # Install remaining dependencies normally
           pip install -r requirements.txt
           pip install pyinstaller
-
+        shell: bash
+  
       # Step 10: Build Executable with PyInstaller (Universal) and include libjpeg.dylib
       - name: Build Executable with PyInstaller
         run: |
           pyinstaller --onefile --windowed --icon=icon.icns --name "ImageStamper" --target-arch universal2 main.py --add-binary "/usr/local/lib/libjpeg.dylib:."
-
+        shell: bash
+  
       # Step 11: Upload macOS Executable as Artifact
       - name: Upload macOS Executable
         uses: actions/upload-artifact@v3
