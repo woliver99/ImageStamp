@@ -81,7 +81,7 @@ jobs:
       # Step 6: Install Universal2 Pillow Wheel
       - name: Install Universal2 Pillow
         run: |
-          pip install wheels/universal2/pillow-11.0.0-universal2.whl
+          pip install wheels/universal2/*.whl  # Use wildcard to install the fused wheel
 
       # Step 7: Install Remaining Dependencies
       - name: Install Remaining Dependencies
