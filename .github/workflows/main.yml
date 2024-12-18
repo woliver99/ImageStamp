@@ -50,11 +50,11 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # Step 2: Set up Python 3.12.8 with universal2 architecture
-      - name: Set up Python 3.12.8 (universal2)
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.12.8'
+      # Step 2: Set up Python with universal2 architecture
+      - name: Install Universal2 Python
+        run: |
+          brew install python
+          python3 --version
 
       # Step 3: Install dependencies
       - name: Install Dependencies
