@@ -22,19 +22,28 @@ jobs:
         with:
           python-version: '3.12.8'
 
-      # Step 3: Install dependencies
+      # Step 3: Cache pip dependencies
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      # Step 4: Install dependencies
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller  # Explicitly install PyInstaller
 
-      # Step 4: Build Executable with PyInstaller
+      # Step 5: Build Executable with PyInstaller
       - name: Build Executable
         run: |
           pyinstaller --onefile --windowed --icon=icon.icns --name "ImageStamper" main.py
 
-      # Step 5: Upload Windows Executable as Artifact
+      # Step 6: Upload Windows Executable as Artifact
       - name: Upload Windows Executable
         uses: actions/upload-artifact@v3
         with:
@@ -44,16 +53,20 @@ jobs:
   build-macos:
     name: Build macOS Executable (Universal)
     runs-on: macos-latest
-  
+
     steps:
+      # Step 1: Checkout the repository
       - name: Checkout Repository
         uses: actions/checkout@v3
-  
+
+      # Step 2: Set up Python 3.12.8 with universal2 architecture
       - name: Set up Python 3.12.8 (universal2)
         uses: actions/setup-python@v4
         with:
           python-version: '3.12.8'
-  
+          architecture: 'universal2'  # Ensures a universal build of Python
+
+      # Step 3: Cache pip dependencies
       - name: Cache pip
         uses: actions/cache@v3
         with:
@@ -61,43 +74,33 @@ jobs:
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
-  
+
+      # Step 4: Install Homebrew Dependencies (if needed)
       - name: Install Homebrew Dependencies
         run: |
-          brew install libjpeg zlib  # Install any system libraries Pillow might need
-  
+          brew install libjpeg zlib  # Install system libraries required by Pillow
+
+      # Step 5: Install dependencies
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
           # Force build Pillow from source to ensure universal2 support
           pip install --no-binary Pillow Pillow
-          # Install other dependencies normally
+          # Install remaining dependencies normally
           pip install -r requirements.txt
           pip install pyinstaller
-  
+
+      # Step 6: Build Executable with PyInstaller (Universal)
       - name: Build Executable
         run: |
           pyinstaller --onefile --windowed --icon=icon.icns --name "ImageStamper" --target-arch universal2 main.py
-  
-      - name: Sign Executable
-        run: |
-          codesign --deep --force --verify --verbose --sign "${{ secrets.MACOS_CODE_SIGN_IDENTITY }}" ./dist/ImageStamper
-        env:
-          CODESIGN_IDENTITY: ${{ secrets.MACOS_CODE_SIGN_IDENTITY }}
-  
-      - name: Notarize Executable
-        run: |
-          xcrun notarytool submit ./dist/ImageStamper --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$TEAM_ID" --wait
-        env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          TEAM_ID: ${{ secrets.TEAM_ID }}
-  
+
+      # Step 7: Upload macOS Executable as Artifact
       - name: Upload macOS Executable
         uses: actions/upload-artifact@v3
         with:
           name: ImageStamper-macos
-          path: ./dist/ImageStamper
+          path: ./dist/ImageStamper  # PyInstaller creates an executable without extension on macOS
 
   release:
     name: Create GitHub Release
