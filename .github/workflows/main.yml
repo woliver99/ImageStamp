@@ -68,20 +68,20 @@ jobs:
         run: |
           mkdir -p wheels/pillow
           # Download x86_64 wheel
-          pip download --platform macosx_11_0_x86_64 --implementation cp --python-version 3.12 --only-binary=:all: --no-deps --dest wheels/pillow Pillow==11.0.0
+          pip download --platform macosx_10_13_x86_64 --implementation cp --python-version 3.12 --only-binary=:all: --no-deps --dest wheels/pillow Pillow==11.0.0
           # Download arm64 wheel
           pip download --platform macosx_11_0_arm64 --implementation cp --python-version 3.12 --only-binary=:all: --no-deps --dest wheels/pillow Pillow==11.0.0
 
-      # Step 5: Fuse Pillow Wheels into universal2 Wheel
+      # Step 5: Fuse Pillow Wheels into universal2 Wheel using delocate-merge
       - name: Fuse Pillow Wheels into universal2
         run: |
           pip install delocate  # Ensure delocate is installed
-          delocate-merge wheels/pillow/Pillow-11.0.0-cp312-cp312-macosx_11_0_arm64.whl wheels/pillow/Pillow-11.0.0-cp312-cp312-macosx_11_0_x86_64.whl -w wheels/universal2
+          delocate-merge wheels/pillow/pillow-11.0.0-cp312-cp312-macosx_11_0_arm64.whl wheels/pillow/pillow-11.0.0-cp312-cp312-macosx_10_13_x86_64.whl -w wheels/universal2
 
       # Step 6: Install Universal2 Pillow Wheel
       - name: Install Universal2 Pillow
         run: |
-          pip install wheels/universal2/Pillow-11.0.0-universal2.whl
+          pip install wheels/universal2/pillow-11.0.0-universal2.whl
 
       # Step 7: Install Remaining Dependencies
       - name: Install Remaining Dependencies
