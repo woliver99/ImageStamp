@@ -99,7 +99,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ImageStamper-macos
-          path: ./dist/ImageStamper  # PyInstaller creates an executable without extension on macOS
+          path: ./dist/ImageStamper.app  # PyInstaller creates an executable without extension on macOS
 
   release:
     name: Create GitHub Release
