@@ -4,7 +4,7 @@ import json
 import threading
 import queue
 import appdirs
-from PIL import Image
+from PIL import Image, ImageOps
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -389,7 +389,9 @@ class ImageStamperGUI:
     def process_single_image(self, input_path, output_dir, logo, position, logo_size_ratio, opacity):
         filename = os.path.basename(input_path)
         try:
-            with Image.open(input_path).convert("RGBA") as base_image:
+            with Image.open(input_path) as base_image:
+                # Apply EXIF transpose to correct orientation
+                base_image = ImageOps.exif_transpose(base_image).convert("RGBA")
                 base_width, base_height = base_image.size
 
                 # Calculate logo size
