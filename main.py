@@ -15,7 +15,14 @@ class ImageStamperGUI:
         self.master = master
         master.title("Image Stamper - Batch Logo Adder")
         master.geometry("800x600")
-        master.resizable(False, False)
+        master.minsize(800, 600)
+        master.resizable(True, True)  # Allow window to be resizable
+
+        # Configure grid to make the GUI responsive
+        self.master.columnconfigure(0, weight=0)
+        self.master.columnconfigure(1, weight=1)
+        self.master.columnconfigure(2, weight=0)
+        self.master.rowconfigure(8, weight=1)  # Allow the Progress Log to expand
 
         # Determine the settings directory using appdirs
         self.settings_dir = appdirs.user_config_dir("ImageStamper", "maplenetwork")
@@ -39,7 +46,7 @@ class ImageStamperGUI:
 
         # Initialize ThreadPoolExecutor
         self.executor = None
-
+        
         # Determine optimal number of workers
         cpu_count = (multiprocessing.cpu_count() or 1)
         min_cores = 1
@@ -80,20 +87,20 @@ class ImageStamperGUI:
         # ===== Input Directory =====
         tk.Label(self.master, text="Input Directory:", font=('Helvetica', 10, 'bold')).grid(row=0, column=0, sticky="e", **padding_options)
         input_entry = tk.Entry(self.master, textvariable=self.input_dir, width=50, state='readonly')
-        input_entry.grid(row=0, column=1, **padding_options)
-        tk.Button(self.master, text="Browse", command=self.browse_input_dir).grid(row=0, column=2, **padding_options)
+        input_entry.grid(row=0, column=1, sticky="ew", **padding_options)
+        tk.Button(self.master, text="Browse", command=self.browse_input_dir).grid(row=0, column=2, sticky="w", **padding_options)
 
         # ===== Output Directory =====
         tk.Label(self.master, text="Output Directory:", font=('Helvetica', 10, 'bold')).grid(row=1, column=0, sticky="e", **padding_options)
         output_entry = tk.Entry(self.master, textvariable=self.output_dir, width=50, state='readonly')
-        output_entry.grid(row=1, column=1, **padding_options)
-        tk.Button(self.master, text="Browse", command=self.browse_output_dir).grid(row=1, column=2, **padding_options)
+        output_entry.grid(row=1, column=1, sticky="ew", **padding_options)
+        tk.Button(self.master, text="Browse", command=self.browse_output_dir).grid(row=1, column=2, sticky="w", **padding_options)
 
         # ===== Logo File =====
         tk.Label(self.master, text="Logo File:", font=('Helvetica', 10, 'bold')).grid(row=2, column=0, sticky="e", **padding_options)
         logo_entry = tk.Entry(self.master, textvariable=self.logo_path, width=50, state='readonly')
-        logo_entry.grid(row=2, column=1, **padding_options)
-        tk.Button(self.master, text="Browse", command=self.browse_logo).grid(row=2, column=2, **padding_options)
+        logo_entry.grid(row=2, column=1, sticky="ew", **padding_options)
+        tk.Button(self.master, text="Browse", command=self.browse_logo).grid(row=2, column=2, sticky="w", **padding_options)
 
         # ===== Logo Position =====
         tk.Label(self.master, text="Logo Position:", font=('Helvetica', 10, 'bold')).grid(row=3, column=0, sticky="e", **padding_options)
@@ -145,12 +152,12 @@ class ImageStamperGUI:
         # ===== Progress Bar =====
         tk.Label(self.master, text="Progress:", font=('Helvetica', 10, 'bold')).grid(row=7, column=0, sticky="e", **padding_options)
         self.progress = ttk.Progressbar(self.master, orient='horizontal', length=500, mode='determinate')
-        self.progress.grid(row=7, column=1, columnspan=2, padx=10, pady=5)
+        self.progress.grid(row=7, column=1, columnspan=2, padx=10, pady=5, sticky="ew")
 
         # ===== Progress Log =====
         tk.Label(self.master, text="Progress Log:", font=('Helvetica', 10, 'bold')).grid(row=8, column=0, sticky="ne", padx=10, pady=5)
-        self.log_text = tk.Text(self.master, height=25, width=80, state='disabled', wrap='word')
-        self.log_text.grid(row=8, column=1, columnspan=2, padx=10, pady=5)
+        self.log_text = tk.Text(self.master, height=15, width=80, state='disabled', wrap='word')  # Reduced height from 25 to 15
+        self.log_text.grid(row=8, column=1, columnspan=2, padx=10, pady=5, sticky="nsew")  # Made sticky to expand
 
         # ===== Scrollbar for Progress Log =====
         scrollbar = tk.Scrollbar(self.master, command=self.log_text.yview)
@@ -268,7 +275,7 @@ class ImageStamperGUI:
                 self.output_dir.set(settings.get('output_dir', ''))
                 self.logo_path.set(settings.get('logo_path', ''))
                 self.position.set(settings.get('position', 'bottom-right'))
-                self.logo_size_ratio.set(settings.get('logo_size_ratio', 0.1))
+                self.logo_size_ratio.set(settings.get('logo_size_ratio', 0.15))
                 self.opacity.set(settings.get('opacity', 128))
 
                 self.log(f"Loaded settings from {self.settings_path}")
