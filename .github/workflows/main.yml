@@ -161,5 +161,5 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./macos/ImageStamper.app
-          asset_name: ImageStamper-macos
+          asset_name: ImageStamper-macos.app
           asset_content_type: application/octet-stream
