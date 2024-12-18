@@ -23,11 +23,15 @@ jobs:
           python-version: '3.12.8'
 
       # Step 3: Install dependencies
-      - name: Install Dependencies
+      - name: Install Dependencies as Universal2
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pyinstaller  # Explicitly install PyInstaller
+          python3 -m pip install --upgrade pip
+          pip wheel --wheel-dir=./wheels -r requirements.txt
+          for wheel in ./wheels/*.whl; do
+            delocate-wheel --add-deps --rebuild-wheels ./wheels "$wheel";
+          done
+          pip install --find-links=./wheels -r requirements.txt
+          pip install pyinstaller
 
       # Step 4: Build Executable with PyInstaller
       - name: Build Executable
