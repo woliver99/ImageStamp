@@ -42,7 +42,7 @@ jobs:
           path: ./dist/ImageStamper.exe
 
   build-macos:
-    name: Build macOS Executable (Universal2)
+    name: Build macOS Executable (Universal)
     runs-on: macos-latest
 
     steps:
@@ -50,39 +50,31 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # Step 2: Download and Install Universal2 Python
-      - name: Download Universal2 Python 3.10
-        run: |
-          curl -O https://www.python.org/ftp/python/3.10.13/python-3.10.13-macos11-universal2.pkg
+      # Step 2: Set up Python 3.10 (Universal2)
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          architecture: 'universal2'  # Ensure a universal build of Python
 
-      - name: Install Universal2 Python 3.10
-        run: |
-          sudo installer -pkg python-3.10.13-macos11-universal2.pkg -target /
-
-      # Step 3: Verify Python Installation
-      - name: Verify Python Installation
-        run: |
-          /usr/local/bin/python3 --version
-          /usr/local/bin/python3 -m pip --version
-
-      # Step 4: Install dependencies using universal2 Python
+      # Step 3: Install dependencies
       - name: Install Dependencies
         run: |
-          /usr/local/bin/python3 -m pip install --upgrade pip
-          /usr/local/bin/python3 -m pip install -r requirements.txt
-          /usr/local/bin/python3 -m pip install pyinstaller  # Explicitly install PyInstaller
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller  # Explicitly install PyInstaller
 
-      # Step 5: Build Executable with PyInstaller
+      # Step 4: Build Executable with PyInstaller (Universal)
       - name: Build Executable
         run: |
-          /usr/local/bin/pyinstaller --onefile --windowed --icon=icon.icns --name "ImageStamper" main.py
+          pyinstaller --onefile --windowed --icon=icon.icns --name "ImageStamper" --target-arch universal2 main.py
 
-      # Step 6: Upload macOS Executable as Artifact
+      # Step 5: Upload macOS Executable as Artifact
       - name: Upload macOS Executable
         uses: actions/upload-artifact@v3
         with:
           name: ImageStamper-macos
-          path: ./dist/ImageStamper  # No extension on macOS
+          path: ./dist/ImageStamper  # PyInstaller creates an executable without extension on macOS
 
   release:
     name: Create GitHub Release
