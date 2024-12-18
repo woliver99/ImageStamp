@@ -78,27 +78,38 @@ jobs:
           pip install delocate  # Ensure delocate is installed
           delocate-merge wheels/pillow/pillow-11.0.0-cp312-cp312-macosx_11_0_arm64.whl wheels/pillow/pillow-11.0.0-cp312-cp312-macosx_10_13_x86_64.whl -w wheels/universal2
 
-      # Step 6: Install Universal2 Pillow Wheel
+      # Step 6: List Fused Wheels for Verification (Optional)
+      - name: List Fused Wheels
+        run: |
+          ls -la wheels/universal2/
+
+      # Step 7: Install Universal2 Pillow Wheel
       - name: Install Universal2 Pillow
         run: |
           pip install wheels/universal2/*.whl  # Use wildcard to install the fused wheel
 
-      # Step 7: Install Remaining Dependencies
+      # Step 8: Install Remaining Dependencies
       - name: Install Remaining Dependencies
         run: |
           pip install -r requirements.txt
 
-      # Step 8: Build Executable with PyInstaller (Universal)
+      # Step 9: Build Executable with PyInstaller (Universal)
       - name: Build Executable
         run: |
           pyinstaller --onefile --windowed --icon=icon.icns --name "ImageStamper" --target-arch universal2 main.py
 
-      # Step 9: Upload macOS Executable as Artifact
-      - name: Upload macOS Executable
+      # Step 10: Zip the .app Bundle
+      - name: Zip macOS .app Bundle
+        run: |
+          mkdir -p dist/zipped
+          zip -r dist/zipped/ImageStamper-macos.zip dist/ImageStamper.app
+
+      # Step 11: Upload macOS .app Bundle as Artifact
+      - name: Upload macOS Executable (.app) as Artifact
         uses: actions/upload-artifact@v3
         with:
           name: ImageStamper-macos
-          path: ./dist/ImageStamper  # PyInstaller creates an executable without extension on macOS
+          path: ./dist/zipped/ImageStamper-macos.zip  # Zipped .app bundle
 
   release:
     name: Create GitHub Release
@@ -152,13 +163,13 @@ jobs:
           asset_name: ImageStamper-windows.exe
           asset_content_type: application/octet-stream
 
-      # Step 6: Upload macOS Executable to Release
-      - name: Upload macOS Executable to Release
+      # Step 6: Upload macOS .app Bundle to Release
+      - name: Upload macOS Executable (.app) to Release
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./macos/ImageStamper
-          asset_name: ImageStamper-macos
-          asset_content_type: application/octet-stream
+          asset_path: ./macos/ImageStamper-macos.zip
+          asset_name: ImageStamper-macos.zip
+          asset_content_type: application/zip
