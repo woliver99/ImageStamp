@@ -56,36 +56,34 @@ jobs:
         with:
           python-version: '3.12.8'
 
-      # Step 3: Install dependencies
+      # Step 3: Install delocate and other dependencies
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install delocate  # Install delocate for fusing wheels
-          pip install -r requirements.txt
           pip install pyinstaller  # Explicitly install PyInstaller
 
       # Step 4: Download Architecture-Specific Wheels for Pillow
       - name: Download Pillow Wheels
         run: |
           mkdir -p wheels/pillow
+          # Define Pillow version
+          PILLLOW_VERSION=$(pip show Pillow | grep ^Version: | awk '{print $2}')
           # Download x86_64 wheel
-          curl -L https://files.pythonhosted.org/packages/<x86_64_wheel_url> -o wheels/pillow/pillow-x86_64.whl
+          pip download --only-binary=:all: --platform macosx_11_0_x86_64 --python-version 3.12 --abi cp312 --dest wheels/pillow Pillow==$PILLLOW_VERSION
           # Download arm64 wheel
-          curl -L https://files.pythonhosted.org/packages/<arm64_wheel_url> -o wheels/pillow/pillow-arm64.whl
+          pip download --only-binary=:all: --platform macosx_11_0_arm64 --python-version 3.12 --abi cp312 --dest wheels/pillow Pillow==$PILLLOW_VERSION
 
-        # Replace <x86_64_wheel_url> and <arm64_wheel_url> with actual URLs
-        # Alternatively, use pip download to fetch wheels based on platform
-
-      # Step 5: Fuse Wheels into universal2 Wheel
+      # Step 5: Fuse Pillow Wheels into universal2 Wheel
       - name: Fuse Pillow Wheels into universal2
         run: |
-          pip install delocate  # Ensure delocate is installed
-          delocate-fuse wheels/pillow/pillow-x86_64.whl wheels/pillow/pillow-arm64.whl -w wheels/universal2
+          mkdir -p wheels/universal2
+          delocate-fuse wheels/pillow/Pillow-*.whl -w wheels/universal2
 
       # Step 6: Install Universal2 Pillow Wheel
       - name: Install Universal2 Pillow
         run: |
-          pip install wheels/universal2/pillow-universal2.whl
+          pip install wheels/universal2/Pillow-*.whl
 
       # Step 7: Build Executable with PyInstaller (Universal)
       - name: Build Executable
