@@ -1,5 +1,6 @@
 name: Build and Release Image Stamper
 
+# Trigger the workflow on push events to the main branch
 on:
   push:
     branches:
@@ -21,28 +22,19 @@ jobs:
         with:
           python-version: '3.12.8'
 
-      # Step 3: Cache pip dependencies
-      - name: Cache pip
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
-      # Step 4: Install dependencies
+      # Step 3: Install dependencies
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller  # Explicitly install PyInstaller
 
-      # Step 5: Build Executable with PyInstaller
+      # Step 4: Build Executable with PyInstaller
       - name: Build Executable
         run: |
-          pyinstaller --onefile --windowed --icon=icon.icns --name "ImageStamper" main.py
+          pyinstaller --onefile --windowed --icon=icon.ico --name "ImageStamper" main.py
 
-      # Step 6: Upload Windows Executable as Artifact
+      # Step 5: Upload Windows Executable as Artifact
       - name: Upload Windows Executable
         uses: actions/upload-artifact@v3
         with:
@@ -52,80 +44,55 @@ jobs:
   build-macos:
     name: Build macOS Executable (Universal)
     runs-on: macos-latest
-  
+
     steps:
       # Step 1: Checkout the repository
       - name: Checkout Repository
         uses: actions/checkout@v3
-  
+
       # Step 2: Set up Python 3.12.8 with universal2 architecture
       - name: Set up Python 3.12.8 (universal2)
         uses: actions/setup-python@v4
         with:
           python-version: '3.12.8'
-  
-      # Step 3: Install Homebrew
-      - name: Install Homebrew
-        run: |
-          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-          # Add Homebrew to PATH
-          echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $GITHUB_ENV
-          eval "$(/opt/homebrew/bin/brew shellenv)"
-        shell: bash
-  
-      # Step 4: Install Build Tools (if needed)
-      - name: Install Build Tools
-        run: |
-          brew install pkg-config
-        shell: bash
-  
-      # Step 5: Download and Install libjpeg-turbo Universal Package
-      - name: Download and Install libjpeg-turbo
-        run: |
-          curl -L -o /tmp/libjpeg-turbo.pkg https://sourceforge.net/projects/libjpeg-turbo/files/libjpeg-turbo/3.1.0/libjpeg-turbo-3.1.0-osx.pkg/download/
-          sudo installer -pkg /tmp/libjpeg-turbo.pkg -target /
-        shell: bash
-  
-      # Step 6: Verify libjpeg-turbo Installation
-      - name: Verify libjpeg-turbo Installation
-        run: |
-          lipo -info /usr/local/lib/libjpeg.dylib
-        shell: bash
-  
-      # Step 7: Set Environment Variables for Pillow
-      - name: Set Environment Variables for Pillow
-        run: |
-          echo "CPPFLAGS=-I/usr/local/include" >> $GITHUB_ENV
-          echo "LDFLAGS=-L/usr/local/lib" >> $GITHUB_ENV
-        shell: bash
-  
-      # Step 8: Cache pip dependencies
-      - name: Cache pip
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-  
-      # Step 9: Install dependencies
+
+      # Step 3: Install dependencies
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          # Force build Pillow from source to ensure it links against libjpeg-turbo
-          pip install --no-binary Pillow Pillow
-          # Install remaining dependencies normally
+          pip install delocate  # Install delocate for fusing wheels
           pip install -r requirements.txt
-          pip install pyinstaller
-        shell: bash
-  
-      # Step 10: Build Executable with PyInstaller (Universal) and include libjpeg.dylib
-      - name: Build Executable with PyInstaller
+          pip install pyinstaller  # Explicitly install PyInstaller
+
+      # Step 4: Download Architecture-Specific Wheels for Pillow
+      - name: Download Pillow Wheels
         run: |
-          pyinstaller --onefile --windowed --icon=icon.icns --name "ImageStamper" --target-arch universal2 main.py --add-binary "/usr/local/lib/libjpeg.dylib:."
-        shell: bash
-  
-      # Step 11: Upload macOS Executable as Artifact
+          mkdir -p wheels/pillow
+          # Download x86_64 wheel
+          curl -L https://files.pythonhosted.org/packages/<x86_64_wheel_url> -o wheels/pillow/pillow-x86_64.whl
+          # Download arm64 wheel
+          curl -L https://files.pythonhosted.org/packages/<arm64_wheel_url> -o wheels/pillow/pillow-arm64.whl
+
+        # Replace <x86_64_wheel_url> and <arm64_wheel_url> with actual URLs
+        # Alternatively, use pip download to fetch wheels based on platform
+
+      # Step 5: Fuse Wheels into universal2 Wheel
+      - name: Fuse Pillow Wheels into universal2
+        run: |
+          pip install delocate  # Ensure delocate is installed
+          delocate-fuse wheels/pillow/pillow-x86_64.whl wheels/pillow/pillow-arm64.whl -w wheels/universal2
+
+      # Step 6: Install Universal2 Pillow Wheel
+      - name: Install Universal2 Pillow
+        run: |
+          pip install wheels/universal2/pillow-universal2.whl
+
+      # Step 7: Build Executable with PyInstaller (Universal)
+      - name: Build Executable
+        run: |
+          pyinstaller --onefile --windowed --icon=icon.icns --name "ImageStamper" --target-arch universal2 main.py
+
+      # Step 8: Upload macOS Executable as Artifact
       - name: Upload macOS Executable
         uses: actions/upload-artifact@v3
         with:
