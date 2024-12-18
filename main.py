@@ -7,6 +7,7 @@ import appdirs
 from PIL import Image
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
+# Retained for future multithreading integration
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 class ImageStamperGUI:
@@ -31,10 +32,12 @@ class ImageStamperGUI:
         self.logo_size_ratio = tk.DoubleVar(value=0.15)
         self.opacity = tk.IntVar(value=128)
 
-        # Initialize queue for thread-safe logging
+        # Initialize queue for thread-safe logging and progress updates
         self.log_queue = queue.Queue()
+        self.progress_queue = queue.Queue()
+        self.status_queue = queue.Queue()
 
-        # Initialize ThreadPoolExecutor
+        # Initialize ThreadPoolExecutor (retained for future use)
         self.executor = None
         self.max_workers = 8  # Adjust based on your CPU cores
 
@@ -52,6 +55,8 @@ class ImageStamperGUI:
 
         # Start log updater
         self.master.after(100, self.process_log_queue)
+        self.master.after(100, self.update_progress)
+        self.master.after(100, self.process_status_queue)
 
     def get_script_directory(self):
         """
@@ -154,6 +159,8 @@ class ImageStamperGUI:
         self.output_dir.trace_add('write', lambda *args: self.save_settings())
         self.logo_path.trace_add('write', lambda *args: self.save_settings())
         self.position.trace_add('write', lambda *args: self.save_settings())
+        self.logo_size_ratio.trace_add('write', lambda *args: self.save_settings())
+        self.opacity.trace_add('write', lambda *args: self.save_settings())
 
         self.loading_settings = False  # <--- Set flag to False after bindings
 
@@ -178,7 +185,6 @@ class ImageStamperGUI:
         if file:
             self.logo_path.set(file)
             self.log(f"Selected Logo File: {file}")
-
 
     def start_processing(self):
         if self.processing:
@@ -248,7 +254,7 @@ class ImageStamperGUI:
             try:
                 with open(self.settings_path, 'r') as f:
                     settings = json.load(f)
-                
+
                 # Temporarily set the loading flag to prevent save_settings from being called
                 self.loading_settings = True  # <--- Set flag before setting variables
 
@@ -292,6 +298,9 @@ class ImageStamperGUI:
         except Exception as e:
             self.log(f"Error saving settings: {e}")
 
+    def reset_processing_flag(self):
+        self.processing = False
+
     def process_images(self):
         input_dir = self.input_dir.get()
         output_dir = self.output_dir.get()
@@ -306,8 +315,8 @@ class ImageStamperGUI:
             self.log(f"Output directory ensured at: {output_dir}")
         except Exception as e:
             self.log(f"Error ensuring output directory: {e}")
-            self.enable_start_button()
-            self.processing = False
+            self.status_queue.put('enable_start_button')
+            self.status_queue.put('reset_processing_flag')
             return
 
         # Load the logo image
@@ -316,42 +325,39 @@ class ImageStamperGUI:
             self.log(f"Loaded logo from: {logo_path}")
         except Exception as e:
             self.log(f"Error loading logo: {e}")
-            self.enable_start_button()
-            self.processing = False
+            self.status_queue.put('enable_start_button')
+            self.status_queue.put('reset_processing_flag')
             return
 
         supported_extensions = ('.png', '.jpg', '.jpeg', '.bmp', '.gif')
-        all_files = [f for f in os.listdir(input_dir) if f.lower().endswith(supported_extensions) and os.path.isfile(os.path.join(input_dir, f))]
+        try:
+            all_files = [f for f in os.listdir(input_dir) if f.lower().endswith(supported_extensions) and os.path.isfile(os.path.join(input_dir, f))]
+        except Exception as e:
+            self.log(f"Error accessing input directory: {e}")
+            self.status_queue.put('enable_start_button')
+            self.status_queue.put('reset_processing_flag')
+            return
+
         total_files = len(all_files)
 
         if total_files == 0:
             self.log("No supported images found in the input directory.")
-            self.enable_start_button()
-            self.processing = False
+            self.status_queue.put('enable_start_button')
+            self.status_queue.put('reset_processing_flag')
             return
 
         self.log(f"Found {total_files} supported image(s) in the input directory.")
-        self.progress['maximum'] = total_files
+        self.progress_queue.put(('set_max', total_files))
 
-        # Initialize ThreadPoolExecutor
-        self.executor = ThreadPoolExecutor(max_workers=self.max_workers)
-        futures = []
-
+        # Single-threaded processing: Iterate and process each image sequentially
         for filename in all_files:
             input_path = os.path.join(input_dir, filename)
-            futures.append(self.executor.submit(
-                self.process_single_image, input_path, output_dir, logo, position, logo_size_ratio, opacity
-            ))
+            self.process_single_image(input_path, output_dir, logo, position, logo_size_ratio, opacity)
 
-        for future in as_completed(futures):
-            try:
-                future.result()  # This will re-raise any exception occurred in the thread
-            except Exception as e:
-                self.log(f"❌ Unexpected error: {e}")
-
-        self.log(f"🎉 Processing completed: {total_files} image(s) processed.")
-        self.enable_start_button()
-        self.processing = False
+        # Communicate completion to the main thread
+        self.status_queue.put('log:🎉 Processing completed: {} image(s) processed.'.format(total_files))
+        self.status_queue.put('enable_start_button')
+        self.status_queue.put('reset_processing_flag')
 
     def process_single_image(self, input_path, output_dir, logo, position, logo_size_ratio, opacity):
         filename = os.path.basename(input_path)
@@ -402,18 +408,57 @@ class ImageStamperGUI:
                 # Save the image as JPEG
                 composite.save(output_path, format='JPEG', quality=100)  # Adjust quality as needed
 
-                # Update progress bar
-                self.master.after(0, lambda: self.progress.step(1))
+                # Update progress bar via queue
+                self.progress_queue.put(('step', 1))
 
                 # Log success
                 self.log(f"✅ Added logo to '{filename}' and saved as '{output_filename}'.")
 
         except Exception as e:
-            # Update progress bar
-            self.master.after(0, lambda: self.progress.step(1))
+            # Update progress bar via queue
+            self.progress_queue.put(('step', 1))
 
             # Log failure
             self.log(f"❌ Failed to process '{filename}': {e}")
+
+    def update_progress(self):
+        """
+        Updates the progress bar based on messages from the progress_queue.
+        """
+        try:
+            while True:
+                message = self.progress_queue.get_nowait()
+                if isinstance(message, tuple):
+                    command, value = message
+                    if command == 'set_max':
+                        self.progress['maximum'] = value
+                    elif command == 'step':
+                        self.progress.step(value)
+                else:
+                    self.progress.step(message)
+        except queue.Empty:
+            pass
+        finally:
+            self.master.after(100, self.update_progress)
+
+    def process_status_queue(self):
+        """
+        Processes status updates from the status_queue and performs actions in the main thread.
+        """
+        try:
+            while True:
+                message = self.status_queue.get_nowait()
+                if message == 'enable_start_button':
+                    self.enable_start_button()
+                elif message == 'reset_processing_flag':
+                    self.reset_processing_flag()
+                elif message.startswith('log:'):
+                    log_message = message[4:]
+                    self.log(log_message)
+        except queue.Empty:
+            pass
+        finally:
+            self.master.after(100, self.process_status_queue)
 
 def main():
     root = tk.Tk()
