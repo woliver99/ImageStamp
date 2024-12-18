@@ -7,8 +7,8 @@ import appdirs
 from PIL import Image
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
-# Retained for future multithreading integration
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import multiprocessing
 
 class ImageStamperGUI:
     def __init__(self, master):
@@ -32,14 +32,20 @@ class ImageStamperGUI:
         self.logo_size_ratio = tk.DoubleVar(value=0.15)
         self.opacity = tk.IntVar(value=128)
 
-        # Initialize queue for thread-safe logging and progress updates
+        # Initialize queues for thread-safe communication
         self.log_queue = queue.Queue()
         self.progress_queue = queue.Queue()
         self.status_queue = queue.Queue()
 
-        # Initialize ThreadPoolExecutor (retained for future use)
+        # Initialize ThreadPoolExecutor
         self.executor = None
-        self.max_workers = 8  # Adjust based on your CPU cores
+
+        # Determine optimal number of workers
+        cpu_count = (multiprocessing.cpu_count() or 1)
+        min_cores = 1
+        max_cores = 32
+        self.max_workers = max(min_cores, min(round(cpu_count - cpu_count / 4), max_cores))
+        print(f"Max workers: {self.max_workers}")
 
         # Flag to control processing
         self.processing = False
@@ -53,7 +59,7 @@ class ImageStamperGUI:
         # Load settings if available
         self.load_settings()
 
-        # Start log updater
+        # Start queue processors
         self.master.after(100, self.process_log_queue)
         self.master.after(100, self.update_progress)
         self.master.after(100, self.process_status_queue)
@@ -349,13 +355,27 @@ class ImageStamperGUI:
         self.log(f"Found {total_files} supported image(s) in the input directory.")
         self.progress_queue.put(('set_max', total_files))
 
-        # Single-threaded processing: Iterate and process each image sequentially
+        # Initialize ThreadPoolExecutor
+        self.executor = ThreadPoolExecutor(max_workers=self.max_workers)
+        futures = []
+
         for filename in all_files:
             input_path = os.path.join(input_dir, filename)
-            self.process_single_image(input_path, output_dir, logo, position, logo_size_ratio, opacity)
+            futures.append(self.executor.submit(
+                self.process_single_image, input_path, output_dir, logo, position, logo_size_ratio, opacity
+            ))
+
+        for future in as_completed(futures):
+            try:
+                future.result()  # This will re-raise any exception occurred in the thread
+            except Exception as e:
+                self.log(f"❌ Unexpected error: {e}")
+
+        # Shutdown the executor
+        self.executor.shutdown(wait=True)
 
         # Communicate completion to the main thread
-        self.status_queue.put('log:🎉 Processing completed: {} image(s) processed.'.format(total_files))
+        self.status_queue.put(f'log:🎉 Processing completed: {total_files} image(s) processed.')
         self.status_queue.put('enable_start_button')
         self.status_queue.put('reset_processing_flag')
 
@@ -448,13 +468,14 @@ class ImageStamperGUI:
         try:
             while True:
                 message = self.status_queue.get_nowait()
-                if message == 'enable_start_button':
-                    self.enable_start_button()
-                elif message == 'reset_processing_flag':
-                    self.reset_processing_flag()
-                elif message.startswith('log:'):
-                    log_message = message[4:]
-                    self.log(log_message)
+                if isinstance(message, str):
+                    if message == 'enable_start_button':
+                        self.enable_start_button()
+                    elif message == 'reset_processing_flag':
+                        self.reset_processing_flag()
+                    elif message.startswith('log:'):
+                        log_message = message[4:]
+                        self.log(log_message)
         except queue.Empty:
             pass
         finally:
